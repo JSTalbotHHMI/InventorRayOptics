@@ -1,0 +1,16 @@
+# Visual Studio / .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+*.dll
+*.pdb
+
+# OpenCascade WASM is large — if you prefer not to commit it, keep this and
+# document a fetch step in DEVELOPMENT_SPEC. Comment out to commit it.
+# webapp/vendor/opencascade.full.wasm
+
+# OS
+Thumbs.db
+.DS_Store
