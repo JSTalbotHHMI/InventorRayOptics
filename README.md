@@ -11,10 +11,31 @@ browser version). This project is **Inventor-only**.
 
 ## How it works
 
-1. The C# add-in exports the active document to a temporary **STEP** file (true B-rep geometry).
-2. It opens a dockable panel hosting a **WebView2** browser control.
-3. The web app reads the STEP with **OpenCascade (WASM)** and ray-traces light against the
+1. The **Environments** tab gets a "Ray Optics" entry, next to Stress Analysis and
+   Inventor Studio. Clicking it switches the document into a dedicated "Ray Optics"
+   environment — its own ribbon tab becomes active, while the normal modeling tabs stay
+   available (this tool is a passive viewer, not an exclusive editing mode) — and Inventor
+   automatically provides the standard Finish/return affordance out of that environment.
+2. The C# add-in exports the active document to a temporary **STEP** file (true B-rep geometry).
+3. It opens a dockable panel hosting a **WebView2** browser control (unchanged across
+   environment switches — it's a docked panel beside the model, not merged into
+   Inventor's own 3D view; see "Environment vs. same-window rendering" below).
+4. The web app reads the STEP with **OpenCascade (WASM)** and ray-traces light against the
    **analytic B-rep surfaces** — not a triangulated mesh — rendering with three.js.
+
+The Ray Optics tab's "Refresh Model" button re-exports and reloads without leaving the
+environment — useful after editing geometry in another tab.
+
+### Environment vs. same-window rendering
+
+Inventor's `Environment` API only swaps ribbon tabs/panels — it does not replace or
+merge with the 3D graphics view. Stress Analysis/Inventor Studio get their "results in
+the same window" look by drawing directly into Inventor's native 3D view via its
+**ClientGraphics** API, not by embedding another control over it. This project
+deliberately keeps the simpler architecture: the ray-traced view lives in its own
+WebView2/three.js panel beside Inventor's native view, not drawn into it. Merging the
+two would mean replacing the three.js rendering of rays with native ClientGraphics calls
+from C# — a real rearchitecture, intentionally not done here.
 
 > **Core guarantee:** all intersection and all surface normals used in the physics come
 > from the exact analytic surfaces (`GeomAPI_IntCS` for intersection, `GeomLProp_SLProps`
@@ -23,11 +44,15 @@ browser version). This project is **Inventor-only**.
 
 ## Status
 
-✅ Implemented end-to-end and verified in a standalone browser against real STEP files
-(a 7-surface part and an 18-body, 160-surface assembly). Live-in-Inventor verification
-(the actual add-in → WebView2 → STEP export round trip) is the current step —
-see [`docs/DEVELOPMENT_SPEC.md`](docs/DEVELOPMENT_SPEC.md) for the full architecture,
-phased build plan, and verified API reference this was built from.
+✅ Implemented and verified live in Autodesk Inventor 2025: ribbon button → Environment
+switch → STEP export → WebView2 panel → OpenCascade load → live B-rep ray-trace
+rendering, all confirmed via screenshot capture of the running app. Also stress-tested
+standalone in a browser against real STEP files (a 7-surface part and an 18-body,
+160-surface assembly; 15 consecutive retraces up to ~15k rays, zero crashes).
+See [`docs/DEVELOPMENT_SPEC.md`](docs/DEVELOPMENT_SPEC.md) for the full architecture,
+phased build plan, and verified API reference this was built from — including a gotchas
+section on two hard-won bugs (an OCCT memory-corruption double-free, a WebView2
+navigation race) worth reading before touching `brepTracer.js`/`occt.js` again.
 
 ## Building
 
