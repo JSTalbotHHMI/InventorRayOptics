@@ -63,6 +63,9 @@ namespace InventorRayOptics
                 StandardAddInServer.AddInClientId, "IROptics:Dock", "Ray Optics");
             _dw.AddChild(_host.Handle.ToInt32());
             _dw.DockingState = DockingStateEnum.kDockRight;
+            // default docking width (230px) only fits the sidebar, hiding the 3D
+            // viewport entirely — give it room to show both on first use
+            _dw.Width = 900;
         }
 
         private Task EnsureInitializedAsync()

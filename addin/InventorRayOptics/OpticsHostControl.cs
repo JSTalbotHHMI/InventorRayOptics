@@ -35,7 +35,20 @@ namespace InventorRayOptics
             Web.CoreWebView2.WebMessageReceived += (s, e) =>
                 MessageFromWeb?.Invoke(this, e.TryGetWebMessageAsString());
 
+            // Navigate() does not wait for the page to finish loading — posting a
+            // message immediately after it returns can race the page's own
+            // WebMessageReceived listener (js/app.js attaches it at module-eval time),
+            // silently dropping the message. Wait for NavigationCompleted so callers of
+            // InitAsync can safely PostJson right away.
+            var navigationDone = new TaskCompletionSource<bool>();
+            void OnNavigationCompleted(object s, CoreWebView2NavigationCompletedEventArgs e)
+            {
+                Web.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
+                navigationDone.TrySetResult(e.IsSuccess);
+            }
+            Web.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
             Web.CoreWebView2.Navigate("https://app.local/index.html");
+            await navigationDone.Task;
         }
 
         public void PostJson(string json)
