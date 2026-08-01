@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Inventor;
+using IOPath = System.IO.Path;
 
 namespace InventorRayOptics
 {
@@ -21,6 +22,19 @@ namespace InventorRayOptics
         {
             _inv = addInSiteObject.Application;
 
+            var resourcesDir = IOPath.Combine(
+                IOPath.GetDirectoryName(GetType().Assembly.Location) ?? ".", "Resources");
+            object smallIcon = null, largeIcon = null;
+            try
+            {
+                smallIcon = IconHelper.LoadPictureDisp(IOPath.Combine(resourcesDir, "icon16.png"));
+                largeIcon = IconHelper.LoadPictureDisp(IOPath.Combine(resourcesDir, "icon32.png"));
+            }
+            catch
+            {
+                // fall back to Inventor's default placeholder icon rather than failing to load
+            }
+
             var defs = _inv.CommandManager.ControlDefinitions;
             _launchBtn = defs.AddButtonDefinition(
                 "Ray Optics",
@@ -28,7 +42,9 @@ namespace InventorRayOptics
                 CommandTypesEnum.kNonShapeEditCmdType,
                 AddInClientId,
                 "Trace light rays through the active part or assembly",
-                "Open the optical ray-tracing panel");
+                "Open the optical ray-tracing panel",
+                smallIcon,
+                largeIcon);
             _launchBtn.OnExecute += OnLaunch;
 
             AddButtonToRibbon("Part");

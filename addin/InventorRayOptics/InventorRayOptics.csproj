@@ -71,6 +71,7 @@
     <Compile Include="StepExporter.cs" />
     <Compile Include="OpticsDockable.cs" />
     <Compile Include="OpticsHostControl.cs" />
+    <Compile Include="IconHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 
@@ -81,6 +82,12 @@
       <Link>WebView2Loader.dll</Link>
     </None>
     <None Include="InventorRayOptics.addin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Resources\icon16.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Resources\icon32.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
