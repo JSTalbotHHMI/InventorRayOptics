@@ -1,0 +1,110 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #101418; color: #d8dee6;
+}
+body { display: flex; }
+
+#sidebar {
+  width: 320px; min-width: 320px; height: 100vh; overflow-y: auto;
+  background: #171c22; border-right: 1px solid #2a323c;
+  padding: 12px 14px 40px;
+}
+#viewport { flex: 1; height: 100vh; position: relative; }
+#viewport canvas { display: block; }
+
+h1 { font-size: 18px; margin: 4px 0 2px; color: #7ec8ff; letter-spacing: 0.5px; }
+#model-status { margin-bottom: 10px; }
+h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  color: #8fa3b8; margin: 0 0 8px;
+}
+.section {
+  border: 1px solid #2a323c; border-radius: 8px;
+  padding: 10px 12px; margin-bottom: 12px; background: #1b222b;
+}
+
+button {
+  background: #2a3542; color: #d8dee6; border: 1px solid #3c4a5a;
+  border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px;
+}
+button:hover { background: #354356; }
+button.primary { background: #1f5c8b; border-color: #2d7ab8; }
+button.primary:hover { background: #2870a8; }
+#btn-trace { width: 100%; margin-top: 8px; }
+
+.row { display: flex; gap: 6px; margin-bottom: 8px; }
+.row button { flex: 1; }
+
+input[type="number"] {
+  width: 100%; background: #10151b; color: #d8dee6;
+  border: 1px solid #3c4a5a; border-radius: 4px; padding: 3px 5px; font-size: 12px;
+}
+input[type="range"] { flex: 1; accent-color: #2d7ab8; min-width: 60px; }
+select {
+  background: #10151b; color: #d8dee6; border: 1px solid #3c4a5a;
+  border-radius: 4px; padding: 3px 5px; font-size: 12px; flex: 1;
+}
+
+.slider-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; margin: 6px 0;
+}
+.slider-row > span:first-child { width: 82px; color: #a8b8c8; }
+.val { min-width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.xyz-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.xyz-row label { flex: 1; font-size: 11px; color: #a8b8c8; }
+
+.check { display: flex; align-items: center; gap: 6px; font-size: 12px; margin: 6px 0; cursor: pointer; }
+.check input { accent-color: #2d7ab8; }
+
+.swatch-row { font-size: 12px; color: #a8b8c8; margin: 4px 0; display: flex; align-items: center; gap: 8px; }
+#wl-swatch, #spec-swatch {
+  display: inline-block; width: 40px; height: 14px; border-radius: 3px;
+  border: 1px solid #3c4a5a; background: rgb(163, 255, 0);
+}
+#spec-swatch { width: 120px; }
+input.nm { width: 62px !important; }
+input.val-input { width: 62px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.coef-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px;
+}
+.coef-grid label { font-size: 10px; color: #8fa3b8; display: block; }
+.coef-grid input { width: 100%; font-size: 11px; }
+.n-hint { font-size: 11px; color: #7fb08a; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.body-item select { width: 100%; margin-top: 2px; }
+
+.muted { color: #6c7c8c; font-size: 12px; }
+.small { font-size: 11px; margin-top: 6px; line-height: 1.5; }
+.info { font-size: 12px; margin-bottom: 6px; color: #cde08a; }
+
+#body-list { margin-top: 4px; }
+.body-item {
+  border: 1px solid #2a323c; border-radius: 6px; padding: 6px 8px;
+  margin-bottom: 6px; background: #161c23; font-size: 12px;
+}
+.body-item .body-name {
+  font-weight: 600; color: #cfe3f5; margin-bottom: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.body-item .body-row { display: flex; align-items: center; gap: 6px; }
+.body-item .body-row label { color: #a8b8c8; font-size: 11px; }
+
+#trace-stats { margin-top: 8px; font-variant-numeric: tabular-nums; }
+
+#loading-overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px;
+  align-items: center; justify-content: center;
+  background: rgba(16, 20, 24, 0.85); color: #7ec8ff; font-size: 14px; z-index: 10;
+  text-align: center; padding: 20px;
+}
+#loading-overlay .progress-track {
+  width: 260px; height: 6px; border-radius: 3px; background: #232b34; overflow: hidden;
+}
+#loading-overlay .progress-fill {
+  height: 100%; background: #2d7ab8; width: 0%; transition: width 0.2s ease;
+}
+#loading-overlay .error { color: #e08a8a; max-width: 320px; }

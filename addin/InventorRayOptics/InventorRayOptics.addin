@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Addin Type="Standard">
+  <ClassId>{8210C5FB-411B-4F93-9034-58FEFBFA35BC}</ClassId>
+  <ClientId>{8210C5FB-411B-4F93-9034-58FEFBFA35BC}</ClientId>
+  <DisplayName>Inventor Ray Optics</DisplayName>
+  <Description>Optical ray-tracing environment for the active part or assembly</Description>
+  <Assembly>InventorRayOptics.dll</Assembly>
+  <LoadOnStartUp>1</LoadOnStartUp>
+  <UserUnloadable>1</UserUnloadable>
+  <Hidden>0</Hidden>
+  <SupportedSoftwareVersionGreaterThan>22..</SupportedSoftwareVersionGreaterThan>
+</Addin>

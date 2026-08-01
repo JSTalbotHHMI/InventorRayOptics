@@ -7,9 +7,12 @@
 *.dll
 *.pdb
 
-# OpenCascade WASM is large — if you prefer not to commit it, keep this and
-# document a fetch step in DEVELOPMENT_SPEC. Comment out to commit it.
-# webapp/vendor/opencascade.full.wasm
+# NuGet-restored WebView2 SDK — regenerate with:
+#   tools/nuget.exe install Microsoft.Web.WebView2 -Version 1.0.2792.45 -OutputDirectory addin/packages
+addin/packages/
+
+# webapp/vendor/opencascade/*.wasm and opencascade.js ARE committed (~119 MB) —
+# see README "Building" for why (no separate fetch step needed to build/run).
 
 # OS
 Thumbs.db

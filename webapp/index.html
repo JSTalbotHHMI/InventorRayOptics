@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InventorRayOptics</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+<div id="sidebar">
+  <h1>InventorRayOptics</h1>
+  <div id="model-status" class="muted">Waiting for the active Inventor model…</div>
+
+  <div class="section">
+    <h2>Bodies</h2>
+    <div id="body-list" class="muted small">No model loaded yet.</div>
+  </div>
+
+  <div class="section">
+    <h2>Selected Surface</h2>
+    <div id="face-panel" class="muted">Click a surface in the 3D view to select it.</div>
+    <div id="face-controls" hidden>
+      <div id="face-info" class="info"></div>
+      <label class="check"><input type="checkbox" id="face-fresnel" checked> Auto (Fresnel equations)</label>
+      <div class="slider-row" id="face-refl-row">
+        <span>Reflectivity</span>
+        <input type="range" id="face-refl" min="0" max="1" step="0.01" value="0.5">
+        <span id="face-refl-val" class="val">0.50</span>
+      </div>
+      <button id="btn-deselect">Deselect</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Point Light Source</h2>
+    <div class="xyz-row">
+      <label>X <input type="number" id="light-x" step="1" value="0"></label>
+      <label>Y <input type="number" id="light-y" step="1" value="0"></label>
+      <label>Z <input type="number" id="light-z" step="1" value="0"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="light-gizmo" checked> Show drag gizmo</label>
+    <div class="slider-row">
+      <span>Light mode</span>
+      <select id="light-mode">
+        <option value="single" selected>Single wavelength</option>
+        <option value="spectrum">Spectrum (dispersion)</option>
+      </select>
+    </div>
+    <div id="single-wl-rows">
+      <div class="slider-row">
+        <span>Wavelength</span>
+        <input type="range" id="wavelength" min="380" max="750" step="1" value="550">
+        <span class="val"><span id="wavelength-val">550</span> nm</span>
+      </div>
+      <div class="swatch-row">Ray color: <span id="wl-swatch"></span></div>
+    </div>
+    <div id="spectrum-rows" hidden>
+      <div class="slider-row">
+        <span>Range (nm)</span>
+        <input type="number" id="spec-min" min="380" max="750" step="5" value="400" class="nm">
+        <span>–</span>
+        <input type="number" id="spec-max" min="380" max="750" step="5" value="700" class="nm">
+      </div>
+      <div class="slider-row">
+        <span>Samples</span>
+        <input type="range" id="spec-samples" min="2" max="24" step="1" value="10">
+        <span id="spec-samples-val" class="val">10</span>
+      </div>
+      <div class="swatch-row">Spectrum: <span id="spec-swatch"></span></div>
+    </div>
+    <div class="slider-row">
+      <span>Intensity</span>
+      <input type="range" id="intensity" min="0" max="4" step="0.05" value="0.05">
+      <input type="number" id="intensity-num" min="0" step="0.1" value="0.05" class="val-input" title="Type any value — the slider covers 0–4, but larger values are allowed">
+    </div>
+    <div class="slider-row">
+      <span>Ray count</span>
+      <input type="range" id="ray-count" min="0" max="100" step="1" value="55">
+      <span id="ray-count-val" class="val">500</span>
+    </div>
+    <div class="slider-row">
+      <span>Emission</span>
+      <select id="emission-mode">
+        <option value="sphere">Full sphere</option>
+        <option value="cone" selected>Cone (aimed at model)</option>
+        <option value="custom">Cone (custom aim)</option>
+      </select>
+    </div>
+    <div class="slider-row" id="cone-row">
+      <span>Cone angle</span>
+      <input type="range" id="cone-angle" min="1" max="90" step="1" value="20">
+      <span class="val"><span id="cone-angle-val">20</span>°</span>
+    </div>
+    <div id="aim-rows" hidden>
+      <div class="xyz-row">
+        <label>Aim X <input type="number" id="aim-x" step="1" value="0"></label>
+        <label>Aim Y <input type="number" id="aim-y" step="1" value="0"></label>
+        <label>Aim Z <input type="number" id="aim-z" step="1" value="0"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="aim-gizmo" checked> Show aim gizmo</label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Tracing</h2>
+    <div class="slider-row">
+      <span>Surrounding n</span>
+      <input type="number" id="ambient-ior" min="1" step="0.01" value="1.00" class="val-input" title="Index of refraction of the medium around the model (1 = air/vacuum, 1.33 = water, 1.52 = immersion oil)">
+    </div>
+    <div class="slider-row">
+      <span>Max bounces</span>
+      <input type="range" id="max-bounces" min="1" max="16" step="1" value="8">
+      <span id="max-bounces-val" class="val">8</span>
+    </div>
+    <div class="slider-row">
+      <span>Min intensity</span>
+      <input type="range" id="min-intensity" min="0.005" max="0.2" step="0.005" value="0.02">
+      <span id="min-intensity-val" class="val">0.020</span>
+    </div>
+    <label class="check"><input type="checkbox" id="auto-trace" checked> Auto re-trace on change</label>
+    <button id="btn-trace" class="primary">Trace Rays</button>
+    <div id="trace-stats" class="muted"></div>
+  </div>
+
+  <div class="section">
+    <h2>View</h2>
+    <div class="row">
+      <button id="btn-fit">Fit View</button>
+      <button id="btn-clear-rays">Clear Rays</button>
+    </div>
+    <label class="check"><input type="checkbox" id="show-grid" checked> Show grid</label>
+    <label class="check"><input type="checkbox" id="show-models" checked> Show model</label>
+    <label class="check"><input type="checkbox" id="show-widgets" checked> Show control widgets</label>
+    <div class="muted small">Left-drag: orbit · Right-drag: pan · Scroll: zoom · Click: select surface</div>
+  </div>
+</div>
+<div id="viewport"></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

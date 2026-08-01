@@ -591,6 +591,30 @@ STEP surface highlights exactly that one B-rep face (no scattered triangles).
 - [ ] Physics uses the **analytic normal** (`GeomLProp_SLProps.Normal`), never a triangle normal.
 - [ ] Work in **mm**; keep epsilons scaled to model size.
 - [ ] Keep ray counts modest; bbox broad phase is on.
+- [ ] **Never call `.delete()` on an object after wrapping it in a `Handle_*`** (e.g.
+      `new oc.Handle_Geom_Curve_2(line)`). OCCT's `Handle<T>` owns what it wraps; once
+      wrapped, only the handle's own `.delete()` may be called. Deleting both is a
+      double-free that does **not** crash immediately — it silently corrupts the WASM
+      dynamic-linking function table and only crashes ~200–2000 calls later, with an
+      opaque `RuntimeError: null function or function signature mismatch` / `table
+      index is out of bounds` pointing at an unrelated later call. **A single successful
+      call proves nothing** — this bug hid behind a passing one-shot Node smoke test;
+      it only reproduced under a loop of a few hundred repeated intersections. Verify
+      any new Handle-wrapping pattern with a multi-hundred-iteration loop, not one call.
+
+      opencascade.js class/method resolution used in this project:
+      1. Search "Supported APIs.md" (or `opencascade.d.ts` for the 2.0.0-beta line)
+         for the class name to confirm it exists.
+      2. `grep`-search the raw `.wasm` binary for `ClassName` to find its exact
+         numeric-suffixed overloads (`STEPControl_Reader_1`, `STEPControl_Reader_2`, …) —
+         these do NOT correspond 1:1 with C++ overload count or argument count.
+      3. `.length` on a bound *constructor* is unreliable (always reports 0); `.length`
+         on a bound *instance method* reliably reports its real arity — use that to pick
+         the right overload, or brute-force try candidates and read the thrown
+         `BindingError` message (it states the expected parameter count).
+      4. Methods are not always on the instance's immediate prototype — walk the full
+         prototype chain (`Object.getPrototypeOf` repeatedly) when `Object.
+         getOwnPropertyNames` on the immediate prototype comes up empty.
 
 ---
 
