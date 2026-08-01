@@ -266,9 +266,12 @@ function buildMaterialUI(body, container) {
     if (kind === 'preset') {
       body.material = { ...PRESETS[value] };
     } else if (value !== body.material.type) {
+      // seed with generic starting coefficients that don't exactly equal any named
+      // preset — otherwise the dropdown immediately relabels "(custom)" back to
+      // whichever preset the seed happens to match (see materialSelectValue)
       if (value === 'constant') body.material = { type: 'constant', n: 1.5 };
       else if (value === 'cauchy') body.material = { type: 'cauchy', A: 1.5, B: 0.005, C: 0 };
-      else body.material = { ...PRESETS['N-BK7'] };
+      else body.material = { type: 'sellmeier', B1: 1.0, B2: 0.2, B3: 0.9, C1: 0.01, C2: 0.02, C3: 100 };
     }
     buildMaterialUI(body, container);
     requestTrace();
