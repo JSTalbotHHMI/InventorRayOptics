@@ -23,6 +23,13 @@
     <InventorBinPath Condition="'$(InventorBinPath)'==''">C:\Program Files\Autodesk\Inventor 2025\Bin\Public Assemblies</InventorBinPath>
 
     <WebView2PackageDir>$(MSBuildThisFileDirectory)..\packages\Microsoft.Web.WebView2.1.0.2792.45</WebView2PackageDir>
+
+    <!-- Auto-generated per build (UTC) — no manual bumping to forget. Stamped into the
+         .addin file's Description (what's on disk, ready to load next time — visible in
+         Tools > Add-Ins even while an older build is still running) and compiled into
+         BuildInfo.Version (what's actually loaded right now — shown in the ribbon
+         tooltip and the panel itself). See StampAddinVersion/GenerateVersionFile below. -->
+    <BuildVersion>$([System.DateTime]::UtcNow.ToString('yyyy.MM.dd.HHmm'))</BuildVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
@@ -73,7 +80,15 @@
     <Compile Include="OpticsDockable.cs" />
     <Compile Include="OpticsHostControl.cs" />
     <Compile Include="IconHelper.cs" />
+    <Compile Include="JsonHelper.cs" />
+    <Compile Include="MaterialLibrary.cs" />
+    <Compile Include="SettingsStore.cs" />
+    <Compile Include="PromptDialogs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <!-- Generated fresh every build by GenerateVersionFile below, into the intermediate
+         directory (not source-controlled) — doesn't exist yet at project-evaluation
+         time, only needs to by the time CoreCompile actually reads it. -->
+    <Compile Include="$(IntermediateOutputPath)GeneratedVersion.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -82,9 +97,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>WebView2Loader.dll</Link>
     </None>
-    <None Include="InventorRayOptics.addin">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <!-- InventorRayOptics.addin is intentionally NOT listed here — it's a template
+         (literal {{VERSION}} token) stamped into $(OutDir) by StampAddinVersion below,
+         never copied verbatim. -->
     <None Include="Resources\icon16.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -102,5 +117,56 @@
       <WebAppFiles Include="$(MSBuildThisFileDirectory)..\..\webapp\**\*.*" Exclude="$(MSBuildThisFileDirectory)..\..\webapp\README.md" />
     </ItemGroup>
     <Copy SourceFiles="@(WebAppFiles)" DestinationFolder="$(OutDir)webapp\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Versioning (see the BuildVersion property above): a plain file-text-replace task,
+       not a NuGet package — CodeTaskFactory ships with the .NET Framework MSBuild
+       toolset itself, so this can't hit the "reference assembly doesn't exist at
+       runtime" problem System.Web.Extensions did (see JsonHelper.cs) — it never ships
+       with the add-in at all, it only runs at build time. -->
+  <UsingTask TaskName="ReplaceTokenInFile" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <SourcePath ParameterType="System.String" Required="true" />
+      <DestinationPath ParameterType="System.String" Required="true" />
+      <Token ParameterType="System.String" Required="true" />
+      <Value ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var text = File.ReadAllText(SourcePath).Replace(Token, Value);
+        Directory.CreateDirectory(Path.GetDirectoryName(DestinationPath));
+        File.WriteAllText(DestinationPath, text);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- Compiled into the DLL — reflects whatever build is actually LOADED right now
+       (StandardAddInServer's ribbon tooltip and the panel header both show this).
+       Also emits the real AssemblyVersion/AssemblyFileVersion (moved out of
+       AssemblyInfo.cs) — those are the actual Win32 version resource fields Explorer's
+       Properties > Details tab and PowerShell's Get-Item.VersionInfo read, so without
+       this a hardcoded "1.0.0.0" there would never look current no matter what
+       BuildInfo.Version or the .addin manifest say. -->
+  <Target Name="GenerateVersionFile" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <VersionFileLines Include="using System.Reflection%3B" />
+      <VersionFileLines Include="[assembly: AssemblyVersion(&quot;$(BuildVersion)&quot;)]" />
+      <VersionFileLines Include="[assembly: AssemblyFileVersion(&quot;$(BuildVersion)&quot;)]" />
+      <VersionFileLines Include="namespace InventorRayOptics { internal static class BuildInfo { public const string Version = &quot;$(BuildVersion)&quot;%3B } }" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(IntermediateOutputPath)GeneratedVersion.cs" Lines="@(VersionFileLines)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <!-- Stamped into $(OutDir), never the checked-in template — reflects whatever build
+       is on disk, ready to load next time (visible in Tools > Add-Ins independent of
+       whether the currently-running DLL is older, e.g. because Inventor had it locked
+       during a redeploy). -->
+  <Target Name="StampAddinVersion" AfterTargets="Build">
+    <ReplaceTokenInFile
+      SourcePath="$(MSBuildThisFileDirectory)InventorRayOptics.addin"
+      DestinationPath="$(OutDir)InventorRayOptics.addin"
+      Token="{{VERSION}}"
+      Value="$(BuildVersion)" />
   </Target>
 </Project>

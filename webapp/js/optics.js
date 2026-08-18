@@ -55,6 +55,89 @@ export function emissionDirections(count, mode, axis, coneAngleDeg) {
   return dirs;
 }
 
+// A single random direction, uniformly sampled over the solid angle of a cap of
+// half-angle `maxAngleDeg` around `axis` (0° → always returns `axis` itself). Used for
+// surface/body emitters in "max angle from normal" mode, where each sampled emission
+// point on the body needs its own independent random direction — unlike
+// emissionDirections' deterministic fan (shared by a single point light), every call
+// here draws fresh, so many calls around many different axes look like independent
+// per-point Monte Carlo sampling rather than one repeated fixed pattern.
+export function randomConeDirection(axis, maxAngleDeg) {
+  const cosCap = Math.cos(THREE.MathUtils.degToRad(maxAngleDeg));
+  const cosA = cosCap + Math.random() * (1 - cosCap); // uniform in [cosCap, 1]
+  const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+  const phi = Math.random() * Math.PI * 2;
+
+  const w = axis.clone().normalize();
+  const u = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(w.x) > 0.9) u.set(0, 1, 0);
+  u.cross(w).normalize();
+  const v = new THREE.Vector3().crossVectors(w, u);
+
+  return new THREE.Vector3()
+    .addScaledVector(u, sinA * Math.cos(phi))
+    .addScaledVector(v, sinA * Math.sin(phi))
+    .addScaledVector(w, cosA)
+    .normalize();
+}
+
+// A random direction around `axis` with its polar angle drawn from `angleSampler`
+// (see angularProfile.buildAngleSampler) instead of sampled uniformly over solid angle —
+// this is how a custom angular profile now shapes emission: ray DENSITY varies with the
+// profile's curve, every ray carrying the same fixed energy, rather than a uniform-
+// density fan with per-ray energy weighted by the curve.
+export function profileWeightedDirection(axis, angleSampler) {
+  const theta = THREE.MathUtils.degToRad(angleSampler.sampleAngleDeg());
+  const phi = Math.random() * Math.PI * 2;
+  const sinT = Math.sin(theta), cosT = Math.cos(theta);
+
+  const w = axis.clone().normalize();
+  const u = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(w.x) > 0.9) u.set(0, 1, 0);
+  u.cross(w).normalize();
+  const v = new THREE.Vector3().crossVectors(w, u);
+
+  return new THREE.Vector3()
+    .addScaledVector(u, sinT * Math.cos(phi))
+    .addScaledVector(v, sinT * Math.sin(phi))
+    .addScaledVector(w, cosT)
+    .normalize();
+}
+
+// A cosine-weighted random direction over the hemisphere around `normal` — the
+// standard diffuse (Lambertian) re-emission model for a phosphor conversion event
+// (Phase 6/7): more likely to emit near the normal than at grazing angles, matching
+// how a real phosphor coating scatters the light it re-emits.
+export function cosineWeightedHemisphereDirection(normal) {
+  const r1 = Math.random(), r2 = Math.random();
+  const r = Math.sqrt(r1);
+  const theta = 2 * Math.PI * r2;
+  const x = r * Math.cos(theta), y = r * Math.sin(theta);
+  const z = Math.sqrt(Math.max(0, 1 - r1));
+
+  const w = normal.clone().normalize();
+  const u = new THREE.Vector3(1, 0, 0);
+  if (Math.abs(w.x) > 0.9) u.set(0, 1, 0);
+  u.cross(w).normalize();
+  const v = new THREE.Vector3().crossVectors(w, u);
+
+  return new THREE.Vector3()
+    .addScaledVector(u, x)
+    .addScaledVector(v, y)
+    .addScaledVector(w, z)
+    .normalize();
+}
+
+// A uniform random direction over the full sphere — used to re-emit a volumetric
+// phosphor conversion event (Phase 7), where the conversion point is inside the body's
+// volume and there is no surface normal to weight the re-emission toward.
+export function randomIsotropicDirection() {
+  const z = 2 * Math.random() - 1;
+  const theta = Math.random() * 2 * Math.PI;
+  const r = Math.sqrt(Math.max(0, 1 - z * z));
+  return new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), z);
+}
+
 // Exact unpolarized Fresnel reflectance for dielectrics.
 export function fresnelR(n1, n2, cosI, cosT) {
   const rs = (n1 * cosI - n2 * cosT) / (n1 * cosI + n2 * cosT);
@@ -95,33 +178,32 @@ export function computeBounce(dir, normal, n1, n2, manualReflectivity) {
   return { reflectDir, refractDir, R, tir };
 }
 
-// Build one LineSegments object from traced segment batches, one batch per
-// wavelength: [{ segments, rgb }, ...]. Batches blend additively, so where
-// spectral rays overlap (before dispersion separates them) they sum to white.
-// `gain` converts a ray's relative energy to screen brightness — the caller
+// Build one LineSegments object from a flat list of traced segments, each already
+// carrying its own `rgb` (the ray's wavelength at that point in its path — see
+// brepTracer.js; a phosphor-converted ray's tail is a different color than its head).
+// Additive blending means overlapping spectral rays (before dispersion/reflection
+// separates them) sum toward white, same as before this was per-segment instead of
+// per-batch. `gain` converts a ray's relative energy to screen brightness — the caller
 // derives it from source power / ray count so brightness is power-conserving.
-export function buildRayLines(batches, gain) {
-  let total = 0;
-  for (const b of batches) total += b.segments.length;
+export function buildRayLines(segments, gain) {
+  const total = segments.length;
   const positions = new Float32Array(total * 6);
   const colors = new Float32Array(total * 6);
   let i = 0;
-  for (const { segments, rgb } of batches) {
-    for (const s of segments) {
-      positions[i * 6 + 0] = s.a.x;
-      positions[i * 6 + 1] = s.a.y;
-      positions[i * 6 + 2] = s.a.z;
-      positions[i * 6 + 3] = s.b.x;
-      positions[i * 6 + 4] = s.b.y;
-      positions[i * 6 + 5] = s.b.z;
-      const w = Math.min(1, s.energy * gain);
-      for (const off of [0, 3]) {
-        colors[i * 6 + off + 0] = rgb[0] * w;
-        colors[i * 6 + off + 1] = rgb[1] * w;
-        colors[i * 6 + off + 2] = rgb[2] * w;
-      }
-      i++;
+  for (const s of segments) {
+    positions[i * 6 + 0] = s.a.x;
+    positions[i * 6 + 1] = s.a.y;
+    positions[i * 6 + 2] = s.a.z;
+    positions[i * 6 + 3] = s.b.x;
+    positions[i * 6 + 4] = s.b.y;
+    positions[i * 6 + 5] = s.b.z;
+    const w = Math.min(1, s.energy * gain);
+    for (const off of [0, 3]) {
+      colors[i * 6 + off + 0] = s.rgb[0] * w;
+      colors[i * 6 + off + 1] = s.rgb[1] * w;
+      colors[i * 6 + off + 2] = s.rgb[2] * w;
     }
+    i++;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));

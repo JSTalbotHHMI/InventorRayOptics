@@ -46,5 +46,24 @@ namespace InventorRayOptics
 
             return outPath;
         }
+
+        /// <summary>Solid-body names as Inventor itself shows them (e.g. "Solid1", or
+        /// whatever the user renamed it to), in the same order OpenCascade's
+        /// TopExp_Explorer will walk the exported STEP file's TopAbs_SOLID entities —
+        /// index-matched, not read back out of the STEP file itself (Inventor's STEP
+        /// translator doesn't reliably preserve per-body names there). Returns null for
+        /// anything other than a part document — an assembly's bodies live inside each
+        /// occurrence's underlying part with no single flat list to index against the
+        /// STEP export's combined shape.</summary>
+        public static string[] TryGetBodyNames(Document doc)
+        {
+            var partDoc = doc as PartDocument;
+            if (partDoc == null) return null;
+
+            var bodies = partDoc.ComponentDefinition.SurfaceBodies;
+            var names = new string[bodies.Count];
+            for (int i = 1; i <= bodies.Count; i++) names[i - 1] = bodies[i].Name;
+            return names;
+        }
     }
 }

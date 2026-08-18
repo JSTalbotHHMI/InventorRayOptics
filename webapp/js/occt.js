@@ -37,6 +37,22 @@ async function fetchBuffer(url) {
   return new Uint8Array(await res.arrayBuffer());
 }
 
+// A thrown C++ exception that Emscripten couldn't translate into a proper JS Error
+// surfaces here as a bare number (a WASM exception pointer) instead — readable to
+// nobody. Decode it via the module's own helper when this build exposes one; otherwise
+// at least label it clearly instead of showing a mystery integer.
+export function describeException(oc, err) {
+  if (typeof err === 'number' && oc && typeof oc.getExceptionMessage === 'function') {
+    try {
+      return oc.getExceptionMessage(err);
+    } catch {
+      // fall through to the generic label below
+    }
+  }
+  if (typeof err === 'number') return `OpenCascade internal error (exception code ${err})`;
+  return (err && err.message) || String(err);
+}
+
 async function initOcctInternal(onProgress) {
   const initOpenCascade = (await import(VENDOR_DIR + 'opencascade.js')).default;
 
@@ -147,9 +163,23 @@ export function buildFaceTable(oc, shape) {
     solidExplorer.Next(), bodyId++
   ) {
     sawAnySolid = true;
-    const solid = solidExplorer.Current();
+    const solid = oc.TopoDS.Solid_1(solidExplorer.Current());
     const faceIds = collectFacesOfShape(oc, solid, bodyId, faces, () => nextFaceId++);
-    bodies.push({ id: bodyId, faceIds });
+    // true volumetric center of mass — used as the "point" mode position for
+    // body-based light sources (see lights.js); overrides the bbox-center fallback
+    // set below for every body, since we have a real TopoDS_Solid here. OCCT's volume
+    // properties can throw for non-manifold/degenerate solids (seen on real
+    // Inventor-exported STEP geometry, not just the synthetic test samples) — as a raw
+    // WASM exception pointer, not a JS Error, so an uncaught throw here would otherwise
+    // abort the entire model load and surface as an unreadable number in the UI. Fall
+    // back to null so the bbox-center pass below fills it in instead.
+    let centroid = null;
+    try {
+      centroid = computeBodyCentroid(oc, solid);
+    } catch (err) {
+      console.warn(`Body ${bodyId}: volumetric centroid failed, using bbox center instead`, err);
+    }
+    bodies.push({ id: bodyId, faceIds, centroid });
   }
   solidExplorer.delete();
 
@@ -173,9 +203,77 @@ export function buildFaceTable(oc, shape) {
       }
     }
     body.bbox = { min, max };
+    // fallback centroid (bbox center) for the shell-only path, where there is no
+    // TopoDS_Solid to run true volume properties on — solids already got a real one above
+    if (!body.centroid) {
+      body.centroid = { x: (min[0] + max[0]) / 2, y: (min[1] + max[1]) / 2, z: (min[2] + max[2]) / 2 };
+    }
   }
 
   return { faces, bodies };
+}
+
+/**
+ * True volumetric center of mass of a solid (used as the "point" mode position for
+ * body-based light sources) — not a bbox-center or vertex-average approximation.
+ * @returns {{x:number,y:number,z:number}}
+ */
+export function computeBodyCentroid(oc, solid) {
+  const gprops = new oc.GProp_GProps_1();
+  oc.BRepGProp.VolumeProperties_1(solid, gprops, false, false, false);
+  const c = gprops.CentreOfMass();
+  const result = { x: c.X(), y: c.Y(), z: c.Z() };
+  c.delete();
+  gprops.delete();
+  return result;
+}
+
+/**
+ * Rejection-samples up to `count` points on a (possibly trimmed) B-rep face, for use as
+ * emission origins for surface/body light sources. Position and normal are the exact
+ * analytic evaluation at each accepted (u,v) — never a triangle. May return fewer than
+ * `count` points if the trimmed region is small relative to its UV bounding box.
+ * @returns {{point:{x,y,z}, normal:{x,y,z}}[]}
+ */
+export function sampleFacePoints(oc, brepFace, count) {
+  const uMin = { current: 0 }, uMax = { current: 0 }, vMin = { current: 0 }, vMax = { current: 0 };
+  oc.BRepTools.UVBounds_1(brepFace.face, uMin, uMax, vMin, vMax);
+  const du = uMax.current - uMin.current;
+  const dv = vMax.current - vMin.current;
+
+  const samples = [];
+  const maxAttempts = Math.max(count * 40, 200);
+  for (let attempt = 0; attempt < maxAttempts && samples.length < count; attempt++) {
+    const u = uMin.current + Math.random() * du;
+    const v = vMin.current + Math.random() * dv;
+
+    const uv = new oc.gp_Pnt2d_3(u, v);
+    const state = brepFace.classifier.Perform(uv, 1e-7);
+    uv.delete();
+    const onFace = state === oc.TopAbs_State.TopAbs_IN || state === oc.TopAbs_State.TopAbs_ON;
+    if (!onFace) continue;
+
+    const props = new oc.GeomLProp_SLProps_1(brepFace.surface, u, v, 1, 1e-7);
+    if (!props.IsNormalDefined()) { props.delete(); continue; }
+    const localPoint = props.Value();
+    const localNormal = props.Normal();
+    props.delete();
+
+    const worldPoint = localPoint.Transformed(brepFace.trsfFwd);
+    const worldNormal = localNormal.Transformed(brepFace.trsfFwd);
+    localPoint.delete();
+    localNormal.delete();
+
+    let nx = worldNormal.X(), ny = worldNormal.Y(), nz = worldNormal.Z();
+    if (brepFace.reversed) { nx = -nx; ny = -ny; nz = -nz; }
+    samples.push({
+      point: { x: worldPoint.X(), y: worldPoint.Y(), z: worldPoint.Z() },
+      normal: { x: nx, y: ny, z: nz },
+    });
+    worldPoint.delete();
+    worldNormal.delete();
+  }
+  return samples;
 }
 
 function collectFacesOfShape(oc, shape, bodyId, outFaces, nextId) {
@@ -204,7 +302,7 @@ function collectFacesOfShape(oc, shape, bodyId, outFaces, nextId) {
     const id = nextId();
     outFaces.push({
       id, face, surface, location, reversed, classifier, bbox, trsfFwd, trsfInv,
-      reflectivity: null, bodyId,
+      reflectivity: null, dichroic: null, phosphor: null, map: null, bodyId,
     });
     ids.push(id);
   }

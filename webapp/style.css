@@ -33,6 +33,16 @@ button:hover { background: #354356; }
 button.primary { background: #1f5c8b; border-color: #2d7ab8; }
 button.primary:hover { background: #2870a8; }
 #btn-trace { width: 100%; margin-top: 8px; }
+#btn-trace:disabled, #auto-trace:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.toggle-tracing {
+  display: block; width: 100%; margin: 4px 0 10px; padding: 10px 12px;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.3px; border-radius: 6px;
+}
+.toggle-tracing.off { background: #3a2530; border-color: #5a3545; color: #e8b8c8; }
+.toggle-tracing.off:hover { background: #4d2f3e; }
+.toggle-tracing.on { background: #1f5c2e; border-color: #2d8b47; color: #cdf5d8; }
+.toggle-tracing.on:hover { background: #257038; }
 
 .row { display: flex; gap: 6px; margin-bottom: 8px; }
 .row button { flex: 1; }
@@ -92,6 +102,51 @@ input.val-input { width: 62px; text-align: right; font-variant-numeric: tabular-
 }
 .body-item .body-row { display: flex; align-items: center; gap: 6px; }
 .body-item .body-row label { color: #a8b8c8; font-size: 11px; }
+
+#light-list { margin-top: 4px; }
+.light-item {
+  border: 1px solid #2a323c; border-radius: 6px; padding: 8px 10px;
+  margin-bottom: 8px; background: #161c23; font-size: 12px;
+}
+.light-item .light-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+}
+.light-item .light-name {
+  font-weight: 600; color: #cfe3f5; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.light-item .light-swatch {
+  width: 12px; height: 12px; border-radius: 50%; border: 1px solid #3c4a5a; flex-shrink: 0;
+}
+.light-item button.del {
+  padding: 2px 8px; font-size: 11px;
+  background: #3a2530; border-color: #5a3545;
+}
+.light-item button.del:hover { background: #4d2f3e; }
+.light-item .sub-section {
+  border-top: 1px solid #253039; margin-top: 8px; padding-top: 8px;
+}
+
+.xform-row { display: flex; gap: 4px; margin: 6px 0 2px; }
+.xform-row button { flex: 1; font-size: 11px; padding: 3px 2px; }
+.xform-row button.active { background: #2d7ab8; border-color: #5aa0d8; }
+
+.angular-profile { margin: 6px 0; }
+.angular-profile canvas {
+  border: 1px solid #2a323c; border-radius: 4px; display: block; margin-bottom: 4px;
+  cursor: crosshair; max-width: 100%;
+}
+.angular-profile .row { margin-bottom: 4px; }
+
+.band-list { margin: 4px 0; }
+.band-row {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 4px; font-size: 11px;
+}
+.band-row input.nm { width: 56px !important; }
+.band-row button.del { padding: 2px 7px; font-size: 12px; line-height: 1; }
+.band-list > button { width: 100%; font-size: 11px; padding: 4px; }
+
+.reflectivity-mode select { margin-bottom: 4px; }
 
 #trace-stats { margin-top: 8px; font-variant-numeric: tabular-nums; }
 
