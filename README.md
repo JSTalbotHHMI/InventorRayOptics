@@ -1,10 +1,12 @@
 # InventorRayOptics
 
 An Autodesk Inventor add-in that adds an **optical ray-tracing environment** for the
-currently open part (`.ipt`) or assembly (`.iam`). Click a ribbon button and a docked
-panel opens showing a point light source tracing rays that refract and reflect through
-the model in 3D — with control over index of refraction (incl. wavelength dispersion),
-per-surface reflectivity, wavelength, intensity, and ray density.
+currently open part (`.ipt`) or assembly (`.iam`). The properties of each body can be
+altered in the environment to simulate transmissive materials, phosphorescent materials,
+perfectly absorbing materials, or to produce light. Individual surfaces can be configured
+with a fixed reflectivity, to be a dichroic mirror or phosphorescent reflector, or to be
+a surface on which the projected light pattern can be observed. Lights can be configured
+with a custom light spectrum, emission pattern, and intensity.
 
 It is the Inventor-native sibling of [StepRayOptics](../StepRayOptics) (the standalone
 browser version). This project is **Inventor-only**.
