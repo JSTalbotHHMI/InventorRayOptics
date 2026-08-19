@@ -8,7 +8,7 @@ with a fixed reflectivity, to be a dichroic mirror or phosphorescent reflector, 
 a surface on which the projected light pattern can be observed. Lights can be configured
 with a custom light spectrum, emission pattern, and intensity.
 
-It is the Inventor-native sibling of [StepRayOptics](../StepRayOptics) (the standalone
+It is the Inventor-native sibling of [StepRayOptics](https://github.com/JSTalbotHHMI/StepRayOptics) (the standalone
 browser version). This project is **Inventor-only**.
 
 ## How it works
